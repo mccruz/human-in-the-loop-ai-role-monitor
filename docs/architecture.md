@@ -7,6 +7,9 @@ flowchart LR
     A["Public ATS feeds"] --> B["Concurrent discovery"]
     C["Generic career pages"] --> B
     B --> D["Normalized role records"]
+    B --> L["Allowlisted scan summary"]
+    L -. "explicit opt-in" .-> M["Notification observer"]
+    M --> N["Dry-run preview or Telegram Bot API"]
     D --> E["Configurable policy scoring"]
     E --> F["SQLite state and deduplication"]
     F --> G["Human review queue"]
@@ -30,6 +33,8 @@ flowchart LR
 | `review` | Expose the explicit human decision boundary. |
 | `handoff` | Build atomic manifests and require exact receipts before acknowledging delivery. |
 | `reports` | Produce deterministic, redacted CSV and JSON artifacts. |
+| `notifications` | Build bounded, provider-neutral, summary-only event messages and offline previews. |
+| `telegram` | Load environment-only credentials and send plain text through a fixed host with bounded retries. |
 | `cli` | Coordinate safe commands and the offline demonstration. |
 
 ## Reliability decisions
@@ -46,3 +51,6 @@ flowchart LR
 - Only the latest registered manifest can be acknowledged; exact role and URL coverage is required.
 - A durable SQLite delivery claim prevents concurrent adapter calls. It never expires automatically because a slow but active call must not be taken over.
 - After a crash, the operator first reconciles downstream state. An exact retained receipt can be acknowledged directly; otherwise the claim can be released only with explicit confirmation before an idempotent retry. Adapters must upsert by stable role key because recovery may repeat a call whose receipt was lost.
+- Notifications observe an already completed scan at the CLI boundary. They never mutate review or handoff state, and notification failure cannot roll back persisted scan results or reports.
+- Telegram is disabled unless an operator selects dry-run or live-send mode. Live credentials are loaded before discovery, but the summary is sent only after scan persistence and report generation finish.
+- Telegram delivery is at-least-once: a retry after an ambiguous timeout may duplicate a digest, so every deterministic template includes a stable scan ID.

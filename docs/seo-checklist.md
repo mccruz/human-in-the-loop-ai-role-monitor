@@ -6,6 +6,7 @@ This checklist favors accurate, people-first project evidence over keyword repet
 - [x] Proposed GitHub description explains the automation outcome in one sentence.
 - [x] Focused topics match technologies and capabilities actually demonstrated.
 - [x] README opening can be understood by a recruiter in under one minute.
+- [x] Version 1.1 names optional Telegram scan alerts in the recruiter-facing feature summary and dedicated setup documentation.
 - [x] Demo, architecture, safety, tests, limitations, and provenance are linked near the top.
 - [x] Screenshots and architecture visuals have descriptive alt text.
 - [x] Social preview is 1280 by 640 pixels, legible at small sizes, and under 1 MB.

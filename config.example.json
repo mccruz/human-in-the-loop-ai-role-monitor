@@ -3,7 +3,7 @@
   "database": "output/roles.sqlite3",
   "output_dir": "output/reports",
   "concurrency": 6,
-  "user_agent": "human-in-the-loop-ai-role-monitor/1.0 (+https://github.com/mccruz/human-in-the-loop-ai-role-monitor)",
+  "user_agent": "human-in-the-loop-ai-role-monitor/1.1 (+https://github.com/mccruz/human-in-the-loop-ai-role-monitor)",
   "retry": {
     "attempts": 3,
     "timeout_seconds": 15,

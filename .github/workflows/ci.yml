@@ -28,5 +28,5 @@ jobs:
         run: python -m compileall -q src tests
       - name: Run unit tests
         run: python -m unittest discover -s tests -v
-      - name: Run the offline synthetic demo
-        run: role-monitor demo --output-dir demo-output --reset
+      - name: Run the offline synthetic demo and Telegram dry run
+        run: role-monitor demo --output-dir demo-output --reset --telegram-dry-run

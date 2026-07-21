@@ -8,7 +8,7 @@ Apply this metadata only after the local publication review is approved.
 
 ## Description
 
-Human-reviewed Python automation for discovering, scoring, deduplicating, and safely handing off AI roles from public ATS feeds.
+Human-reviewed Python automation for discovering, scoring, and safely handing off AI roles from public ATS feeds, with optional Telegram scan alerts.
 
 ## Topics
 
@@ -22,6 +22,7 @@ Human-reviewed Python automation for discovering, scoring, deduplicating, and sa
 - `concurrency`
 - `reliability-engineering`
 - `testing`
+- `telegram-bot`
 
 ## Social preview
 

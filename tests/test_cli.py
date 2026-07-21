@@ -5,11 +5,14 @@ import io
 import json
 from pathlib import Path
 import tempfile
+from types import SimpleNamespace
 import unittest
+from unittest.mock import patch
 
 from role_monitor.cli import main
 from role_monitor.handoff import complete_receipt
 from role_monitor.store import RoleStore
+from role_monitor.telegram import NotificationError
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -39,6 +42,127 @@ class CliTests(unittest.TestCase):
             self.assertEqual(1, result["final_state"]["delivered"])
             self.assertTrue(Path(str(result["manifest_path"])).exists())
             self.assertTrue(Path(str(result["receipt_path"])).exists())
+
+    def test_demo_can_preview_telegram_without_credentials_or_network(self):
+        with tempfile.TemporaryDirectory() as directory:
+            with patch("role_monitor.cli.load_telegram_credentials") as credentials:
+                status, result = self.invoke([
+                    "demo", "--config", str(ROOT / "config.example.json"), "--output-dir", directory,
+                    "--telegram-dry-run",
+                ])
+            self.assertEqual(0, status)
+            self.assertEqual("dry-run", result["notification"]["status"])
+            self.assertEqual(0, result["notification"]["attempts"])
+            self.assertIn("No applications were submitted", result["notification"]["preview"])
+            credentials.assert_not_called()
+
+    def test_live_telegram_send_preflights_environment_before_scanning(self):
+        with (
+            patch.dict("os.environ", {}, clear=True),
+            patch("role_monitor.cli.run_pipeline") as pipeline,
+            redirect_stderr(io.StringIO()),
+        ):
+            with self.assertRaises(SystemExit) as error:
+                main([
+                    "scan", "--config", str(ROOT / "config.example.json"),
+                    "--allow-network", "--notify-telegram",
+                ])
+        self.assertEqual(2, error.exception.code)
+        pipeline.assert_not_called()
+
+    def test_scan_telegram_dry_run_does_not_load_credentials_or_construct_sender(self):
+        summary = {
+            "generated_at": "2030-01-02T03:04:05+00:00",
+            "sources_attempted": 1,
+            "sources_succeeded": 1,
+            "sources_failed": 0,
+            "postings_discovered": 2,
+            "new_role_records": 1,
+            "review_queue": 1,
+            "approved_undelivered": 0,
+        }
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            with (
+                patch("role_monitor.cli.run_pipeline", return_value=SimpleNamespace(
+                    summary=summary,
+                    reports={"summary": str(root / "scan_summary.json")},
+                    failures=(),
+                )),
+                patch("role_monitor.cli.load_telegram_credentials") as credentials,
+                patch("role_monitor.cli.TelegramNotifier") as notifier,
+            ):
+                status, result = self.invoke([
+                    "scan", "--config", str(ROOT / "config.example.json"),
+                    "--database", str(root / "roles.sqlite3"),
+                    "--output-dir", str(root / "reports"),
+                    "--allow-network", "--telegram-dry-run",
+                ])
+            self.assertEqual(0, status)
+            self.assertEqual("dry-run", result["notification"]["status"])
+            credentials.assert_not_called()
+            notifier.assert_not_called()
+
+    def test_default_scan_does_not_depend_on_notification_summary_contract(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            with patch("role_monitor.cli.run_pipeline", return_value=SimpleNamespace(
+                summary={"future_schema": True},
+                reports={"summary": str(root / "scan_summary.json")},
+                failures=(),
+            )):
+                status, result = self.invoke([
+                    "scan", "--config", str(ROOT / "config.example.json"),
+                    "--database", str(root / "roles.sqlite3"),
+                    "--output-dir", str(root / "reports"),
+                    "--allow-network",
+                ])
+            self.assertEqual(0, status)
+            self.assertEqual({"future_schema": True}, result["summary"])
+            self.assertNotIn("notification", result)
+
+    def test_requested_notification_failure_is_nonzero_after_scan_artifacts_exist(self):
+        summary = {
+            "generated_at": "2030-01-02T03:04:05+00:00",
+            "sources_attempted": 1,
+            "sources_succeeded": 1,
+            "sources_failed": 0,
+            "postings_discovered": 1,
+            "new_role_records": 1,
+            "review_queue": 1,
+            "approved_undelivered": 0,
+        }
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            artifact = root / "scan_summary.json"
+
+            def completed_pipeline(*args, **kwargs):  # type: ignore[no-untyped-def]
+                del args, kwargs
+                artifact.write_text(json.dumps(summary), encoding="utf-8")
+                return SimpleNamespace(
+                    summary=summary,
+                    reports={"summary": str(artifact)},
+                    failures=(),
+                )
+
+            with (
+                patch("role_monitor.cli.run_pipeline", side_effect=completed_pipeline),
+                patch("role_monitor.cli.load_telegram_credentials", return_value=object()),
+                patch("role_monitor.cli.TelegramNotifier") as notifier,
+            ):
+                notifier.return_value.send.side_effect = NotificationError(
+                    "Telegram notification failed: [REDACTED]"
+                )
+                status, result = self.invoke([
+                    "scan", "--config", str(ROOT / "config.example.json"),
+                    "--database", str(root / "roles.sqlite3"),
+                    "--output-dir", str(root / "reports"),
+                    "--allow-network", "--notify-telegram",
+                ])
+            self.assertEqual(1, status)
+            self.assertTrue(artifact.exists())
+            self.assertEqual("failed", result["notification"]["status"])
+            self.assertIn("[REDACTED]", result["notification"]["error"])
 
     def test_queue_review_and_prepare_handoff_use_explicit_local_decisions(self):
         with tempfile.TemporaryDirectory() as directory:

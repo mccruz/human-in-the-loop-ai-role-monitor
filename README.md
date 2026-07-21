@@ -17,6 +17,7 @@ Built to demonstrate the engineering judgment behind reliable AI-enabled automat
 - Explainable, configuration-driven scoring; stable identity and deduplication; and persisted SQLite decision state.
 - An explicit human decision: approve, reject, or defer before a role is eligible for handoff.
 - Deterministic handoff manifests with exact receipt verification, plus atomic, redacted JSON and CSV reports.
+- Optional summary-only Telegram scan digests with environment-only credentials, bounded retries, redacted failures, and an offline dry run.
 
 ## 60-second recruiter walkthrough
 
@@ -45,6 +46,12 @@ role-monitor demo --output-dir demo-output --reset
 
 It creates a disposable workspace populated only with fictional employers, roles, listings, and receipts. The demo performs one clearly labelled synthetic approval, then proves that manifest and receipt verification work without contacting the network. Inspect `demo-output/reports/`, `demo-output/handoff_manifest.json`, and `demo-output/handoff_receipt.json`.
 
+Preview the optional Telegram digest without credentials or a network request:
+
+```bash
+role-monitor demo --output-dir demo-output --reset --telegram-dry-run
+```
+
 For a production-style manual flow, copy the example configuration to the ignored `config.local.json`, replace the fictional employer URLs with public careers pages, and keep each decision explicit:
 
 ```bash
@@ -57,6 +64,19 @@ role-monitor prepare-handoff --config config.local.json --destination output/han
 The live `scan` command never makes a review decision. Use `role-monitor --help` and each subcommand's `--help` for the complete interface.
 
 Live discovery is deliberately opt-in and requires an explicit `--allow-network` flag. Use only public sources, honor provider terms and rate limits, and review discovered roles before any handoff.
+
+## Optional Telegram scan digest
+
+Telegram notification is also explicit and observational. A live scan sends one summary-only, plain-text digest only when `--notify-telegram` is present; it never includes reviewer notes, job descriptions, local paths, credentials, or notification destinations, and it cannot approve or hand off a role.
+
+```bash
+role-monitor scan \
+  --config config.local.json \
+  --allow-network \
+  --notify-telegram
+```
+
+The implementation reads `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID` from the process environment. The repository contains empty placeholders only. See [Telegram setup and failure behavior](docs/telegram.md) before enabling a live send.
 
 If a process stops after delivery begins, first reconcile the downstream task system. Preserve and acknowledge its exact receipt when possible. Only when a stable-role-key upsert is confirmed safe should an operator release the stranded claim for retry:
 
@@ -110,13 +130,13 @@ The project uses documented public endpoints and synthetic fixtures. Provider sc
 
 ## Safety boundaries
 
-- Version 1 never submits applications, sends credentials, or automates a consequential decision.
+- The project never submits applications, sends credentials to job sources, or automates a consequential decision.
 - Human approval is required before a role can be handed off; rejected and deferred decisions are retained separately.
 - Configuration rejects authentication-shaped fields, and persisted external errors are bounded and redacted.
 - Only an exact receipt for the current manifest can complete delivery; invalid or partial receipts leave state unchanged.
 - Concurrent delivery is blocked by a durable claim; crash recovery requires explicit downstream reconciliation rather than an automatic timeout takeover.
 - A first complete-feed miss pauses review and handoff eligibility; retirement requires two consecutive complete misses, and roles not seen for seven days must be refreshed before review or handoff.
-- Telegram is deferred to a later release. If added, it will use environment-provided credentials and mocked tests—never committed keys.
+- Telegram is optional, summary-only, and disabled by default. Credentials come only from the process environment; tests use injected senders and no real keys.
 
 Read the complete [security policy and operating boundaries](SECURITY.md).
 
@@ -130,7 +150,7 @@ Read the complete [security policy and operating boundaries](SECURITY.md).
 
 ## Tests and quality checks
 
-The test suite covers provider-domain validation, malformed responses, retry behavior, concurrent failure isolation, scoring policy, stable identity, preserved review decisions, report redaction/atomicity, and exact handoff receipts.
+The test suite covers provider-domain validation, malformed responses, retry behavior, concurrent failure isolation, scoring policy, stable identity, preserved review decisions, report redaction/atomicity, exact handoff receipts, Telegram rate limits, environment loading, credential redaction, and no-network dry runs.
 
 ```bash
 python -m unittest discover -s tests -v
@@ -140,7 +160,7 @@ python -m compileall -q src tests
 ## Roadmap
 
 - [x] Ship an offline `role-monitor demo` workflow with synthetic reports, manifest, and receipt.
-- [ ] Add optional Telegram notifications with environment-only credentials and mocked tests.
+- [x] Add optional Telegram notifications with environment-only credentials, summary-only templates, and mocked tests.
 - [ ] Expand documented public-feed coverage while preserving the same review and verification boundary.
 
 ## Contributing
