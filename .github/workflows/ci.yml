@@ -1,0 +1,32 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12", "3.13"]
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+      - name: Install package without runtime dependencies
+        run: python -m pip install --no-deps -e .
+      - name: Compile source and tests
+        run: python -m compileall -q src tests
+      - name: Run unit tests
+        run: python -m unittest discover -s tests -v
+      - name: Run the offline synthetic demo
+        run: role-monitor demo --output-dir demo-output --reset

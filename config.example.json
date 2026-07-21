@@ -1,0 +1,87 @@
+{
+  "schema_version": 1,
+  "database": "output/roles.sqlite3",
+  "output_dir": "output/reports",
+  "concurrency": 6,
+  "user_agent": "human-in-the-loop-ai-role-monitor/1.0 (+https://github.com/mccruz/human-in-the-loop-ai-role-monitor)",
+  "retry": {
+    "attempts": 3,
+    "timeout_seconds": 15,
+    "backoff_seconds": 0.25
+  },
+  "scoring": {
+    "thresholds": {
+      "high": 70,
+      "medium": 45,
+      "review": 30
+    },
+    "limits": {
+      "minimum": 0,
+      "maximum": 100
+    },
+    "terms": [
+      {
+        "term": "AI automation",
+        "weight": 35,
+        "fields": ["title", "description"]
+      },
+      {
+        "term": "workflow automation",
+        "weight": 30,
+        "fields": ["title", "description"]
+      },
+      {
+        "term": "implementation",
+        "weight": 20,
+        "fields": ["title", "description"]
+      },
+      {
+        "term": "integration",
+        "weight": 15,
+        "fields": ["title", "description"]
+      },
+      {
+        "term": "machine learning researcher",
+        "weight": -60,
+        "fields": ["title"]
+      },
+      {
+        "term": "remote",
+        "weight": 10,
+        "fields": ["remote"]
+      }
+    ]
+  },
+  "employers": [
+    {
+      "key": "greenhouse-demo",
+      "name": "Northstar Automation",
+      "careers_url": "https://job-boards.greenhouse.io/northstar-automation-demo"
+    },
+    {
+      "key": "lever-demo",
+      "name": "Relay Systems",
+      "careers_url": "https://jobs.lever.co/relay-systems-demo"
+    },
+    {
+      "key": "ashby-demo",
+      "name": "Orchard AI",
+      "careers_url": "https://jobs.ashbyhq.com/orchard-ai-demo"
+    },
+    {
+      "key": "smartrecruiters-demo",
+      "name": "Beacon Workflow",
+      "careers_url": "https://careers.smartrecruiters.com/BeaconWorkflowDemo"
+    },
+    {
+      "key": "workable-demo",
+      "name": "Harbor Integrations",
+      "careers_url": "https://apply.workable.com/harbor-integrations-demo"
+    },
+    {
+      "key": "recruitee-demo",
+      "name": "Lattice Operations",
+      "careers_url": "https://lattice-operations-demo.recruitee.com"
+    }
+  ]
+}

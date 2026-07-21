@@ -1,0 +1,35 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "human-in-the-loop-ai-role-monitor"
+version = "1.0.0"
+description = "A human-reviewed automation pipeline for discovering and safely handing off AI and automation roles from public ATS feeds."
+readme = "README.md"
+requires-python = ">=3.11"
+license = {text = "MIT"}
+authors = [{name = "Mark Cruz"}]
+keywords = [
+  "ai automation",
+  "human in the loop",
+  "applicant tracking system",
+  "job monitoring",
+  "workflow automation",
+]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Topic :: Office/Business",
+]
+dependencies = []
+
+[project.scripts]
+role-monitor = "role_monitor.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
