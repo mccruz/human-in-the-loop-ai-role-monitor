@@ -30,13 +30,19 @@ The result is a concrete example of human-in-the-loop automation for implementat
 
 ## Quick start
 
-Requires Python 3.11+.
+Requires Python 3.11+ and Git. Clone the repository, enter its directory, and use a virtual environment so the project does not modify a system-managed Python installation:
 
 ```bash
+git clone https://github.com/mccruz/human-in-the-loop-ai-role-monitor.git
+cd human-in-the-loop-ai-role-monitor
+python3 -m venv .venv
+source .venv/bin/activate
 python -m pip install --no-deps -e .
 python -m unittest discover -s tests -v
 python -m compileall -q src tests
 ```
+
+On Windows PowerShell, activate the environment with `.venv\Scripts\Activate.ps1` instead. Do not use `--break-system-packages` with a Homebrew- or operating-system-managed Python installation.
 
 Run the complete offline demonstration:
 
@@ -52,12 +58,57 @@ Preview the optional Telegram digest without credentials or a network request:
 role-monitor demo --output-dir demo-output --reset --telegram-dry-run
 ```
 
-For a production-style manual flow, copy the example configuration to the ignored `config.local.json`, replace the fictional employer URLs with public careers pages, and keep each decision explicit:
+### Try the manual review flow offline
+
+The demo leaves additional fictional roles pending in its disposable database. This lets you exercise queue, review, and handoff behavior without creating a live configuration or making a network request:
+
+```bash
+role-monitor queue \
+  --config config.example.json \
+  --database demo-output/demo_roles.sqlite3
+```
+
+Copy one exact `role_key` value from the `pending` list, assign it below in place of `paste-the-role-key-here`, and then approve only that fictional role:
+
+```bash
+ROLE_KEY='paste-the-role-key-here'
+
+role-monitor review \
+  --config config.example.json \
+  --database demo-output/demo_roles.sqlite3 \
+  "$ROLE_KEY" approved \
+  --note "Reviewed manually"
+
+role-monitor prepare-handoff \
+  --config config.example.json \
+  --database demo-output/demo_roles.sqlite3 \
+  --destination demo-output/manual-handoff.json
+```
+
+`prepare-handoff` includes only fresh roles that a person explicitly approved. It fails safely when no approved, undelivered role is available.
+
+### Configure live discovery
+
+Live discovery needs a local configuration that is deliberately excluded from Git. Create it first:
+
+```bash
+cp config.example.json config.local.json
+```
+
+Open `config.local.json` in your editor before scanning. Every employer name and URL in the example is fictional, so replace or remove those entries and keep at least one documented public careers-page URL. Do not add credentials or private data to this file.
+
+Then run the scan and inspect the queue before making any decision:
 
 ```bash
 role-monitor scan --config config.local.json --allow-network
 role-monitor queue --config config.local.json
-role-monitor review --config config.local.json ROLE_KEY approved --note "Reviewed manually"
+```
+
+The scan output distinguishes successful sources from per-source failures. The queue can legitimately be empty when no discovered role meets the configured review threshold. When it contains a role you have actually reviewed, copy its exact `role_key` and use it explicitly:
+
+```bash
+ROLE_KEY='paste-the-role-key-here'
+role-monitor review --config config.local.json "$ROLE_KEY" approved --note "Reviewed manually"
 role-monitor prepare-handoff --config config.local.json --destination output/handoff.json
 ```
 
