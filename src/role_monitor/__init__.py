@@ -3,4 +3,4 @@
 from .models import Employer, JobPosting, ScoredPosting
 
 __all__ = ["Employer", "JobPosting", "ScoredPosting"]
-__version__ = "1.0.0"
+__version__ = "1.1.0"

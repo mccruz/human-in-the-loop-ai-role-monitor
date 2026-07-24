@@ -11,9 +11,11 @@ from .config import MonitorConfig, load_config
 from .demo import run_demo
 from .handoff import acknowledge_receipt, build_manifest, write_manifest_atomic
 from .http import UrllibTransport
+from .notifications import DryRunNotifier, build_scan_notification
 from .pipeline import run_pipeline
 from .review import ReviewService
 from .store import RoleStore
+from .telegram import NotificationError, TelegramNotifier, load_telegram_credentials
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -28,6 +30,17 @@ def _parser() -> argparse.ArgumentParser:
     common(scan)
     scan.add_argument("--output-dir", type=Path, help="Override the configured report directory")
     scan.add_argument("--allow-network", action="store_true", help="Required before live public-feed requests are made")
+    scan_notifications = scan.add_mutually_exclusive_group()
+    scan_notifications.add_argument(
+        "--notify-telegram",
+        action="store_true",
+        help="Send one summary-only digest using environment-provided Telegram credentials",
+    )
+    scan_notifications.add_argument(
+        "--telegram-dry-run",
+        action="store_true",
+        help="Render the Telegram digest without credentials or a Telegram request",
+    )
 
     queue = commands.add_parser("queue", help="Show pending and deferred human-review items")
     common(queue)
@@ -71,6 +84,11 @@ def _parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Replace only the known artifacts inside the selected demo output directory",
     )
+    demo.add_argument(
+        "--telegram-dry-run",
+        action="store_true",
+        help="Render a synthetic Telegram digest without credentials or a network request",
+    )
     return parser
 
 
@@ -100,7 +118,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             fixtures_dir=args.fixtures_dir.expanduser().resolve() if args.fixtures_dir else None,
             reset=args.reset,
         )
-        _print({
+        payload = {
             "mode": "offline synthetic demo",
             "synthetic_decision": "Synthetic demo decision; this is not a production approval.",
             "approved_role_keys": list(result.approved_role_keys),
@@ -112,7 +130,11 @@ def main(argv: Sequence[str] | None = None) -> int:
             "task_count": result.task_count,
             "scan_summary": result.pipeline.summary,
             "final_state": result.final_state,
-        })
+        }
+        if args.telegram_dry_run:
+            notification = build_scan_notification(result.pipeline.summary)
+            payload["notification"] = DryRunNotifier("telegram").send(notification).as_dict()
+        _print(payload)
         return 0
 
     config_path = _config_path(args.config)
@@ -120,14 +142,40 @@ def main(argv: Sequence[str] | None = None) -> int:
     if args.command == "scan":
         if not args.allow_network:
             _parser().error("scan requires --allow-network before making live requests")
+        telegram_credentials = None
+        if args.notify_telegram:
+            try:
+                telegram_credentials = load_telegram_credentials()
+            except ValueError as error:
+                _parser().error(str(error))
         store = _store(config, config_path, args.database)
         try:
             output_dir = _configured_path(config.output_dir, config_path, args.output_dir)
             result = run_pipeline(config, UrllibTransport(), store, output_dir)
-            _print({"summary": result.summary, "reports": result.reports, "failures": list(result.failures)})
+            payload = {
+                "summary": result.summary,
+                "reports": result.reports,
+                "failures": list(result.failures),
+            }
+            status = 0
+            if args.telegram_dry_run:
+                notification = build_scan_notification(result.summary)
+                payload["notification"] = DryRunNotifier("telegram").send(notification).as_dict()
+            elif args.notify_telegram:
+                notification = build_scan_notification(result.summary)
+                try:
+                    payload["notification"] = TelegramNotifier(telegram_credentials).send(notification).as_dict()
+                except NotificationError as error:
+                    payload["notification"] = {
+                        "provider": "telegram",
+                        "status": "failed",
+                        "error": str(error),
+                    }
+                    status = 1
+            _print(payload)
         finally:
             store.close()
-        return 0
+        return status
 
     store = _store(config, config_path, args.database)
     try:

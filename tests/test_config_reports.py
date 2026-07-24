@@ -19,6 +19,18 @@ class ConfigAndReportTests(unittest.TestCase):
         config = load_config(ROOT / "config.example.json")
         self.assertEqual(6, len(config.employers))
         self.assertEqual(6, config.concurrency)
+        self.assertIn("/1.1", config.user_agent)
+
+    def test_environment_example_contains_only_empty_telegram_placeholders(self):
+        assignments = {}
+        for line in (ROOT / ".env.example").read_text(encoding="utf-8").splitlines():
+            if line and not line.startswith("#"):
+                key, value = line.split("=", 1)
+                assignments[key] = value
+        self.assertEqual({
+            "TELEGRAM_BOT_TOKEN": "",
+            "TELEGRAM_CHAT_ID": "",
+        }, assignments)
 
     def test_authentication_fields_are_rejected(self):
         with tempfile.TemporaryDirectory() as directory:

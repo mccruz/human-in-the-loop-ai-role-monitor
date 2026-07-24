@@ -16,5 +16,7 @@ The ATS mappings and payload shapes are based on public vendor documentation:
 - [Workable public published-jobs endpoint](https://help.workable.com/hc/en-us/articles/115012771647-Using-the-Workable-API-to-create-a-careers-page)
 - [Recruitee Careers Site API](https://docs.recruitee.com/reference/intro-to-careers-site-api)
 - [Recruitee feed field reference](https://docs.recruitee.com/docs/feed)
+- [Telegram Bot API `sendMessage`](https://core.telegram.org/bots/api#sendmessage)
+- [Telegram BotFather tutorial](https://core.telegram.org/bots/tutorial)
 
-All committed fixtures are synthetic and were created for this repository. No real job-search dataset, personal eligibility rule, live service route, credential, production path, or private task-system schema is included.
+All committed fixtures are synthetic and were created for this repository. Telegram tests use injected senders and deterministic non-secret placeholders. No real job-search dataset, personal eligibility rule, live service route, credential, chat destination, production path, or private task-system schema is included.
