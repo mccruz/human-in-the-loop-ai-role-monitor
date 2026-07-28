@@ -10,6 +10,17 @@ Built to demonstrate the engineering judgment behind reliable AI-enabled automat
 
 **Start here:** [architecture](docs/architecture.md) · [provenance](docs/provenance.md) · [security boundaries](SECURITY.md) · [GitHub metadata](docs/github-metadata.md) · [recruiter discoverability checklist](docs/seo-checklist.md)
 
+## Review this project in 3 minutes (no setup required)
+
+You do **not** need Python, a Telegram account, or command-line experience to evaluate the project.
+
+1. Read the [60-second recruiter walkthrough](#60-second-recruiter-walkthrough) below.
+2. Use the diagram above to follow the path from public job listings to a person-controlled review and verified handoff.
+3. Review the [architecture decisions](docs/architecture.md) and [security boundaries](SECURITY.md).
+4. Inspect the [automated checks](https://github.com/mccruz/human-in-the-loop-ai-role-monitor/actions/workflows/ci.yml), which run the tests and the fictional offline demo on multiple Python versions.
+
+Running the code is optional. The hands-on instructions are provided for technical reviewers who want to see the workflow operate locally.
+
 ## What this demonstrates
 
 - Six documented public ATS adapters: Greenhouse, Lever (global and EU), Ashby, SmartRecruiters (pagination and detail hydration), Workable, and Recruitee.
@@ -28,35 +39,66 @@ Built to demonstrate the engineering judgment behind reliable AI-enabled automat
 
 The result is a concrete example of human-in-the-loop automation for implementation-oriented work: automation handles repeatable collection and evidence; people retain the consequential decision.
 
-## Quick start
+## Optional: run the offline demo
 
-Requires Python 3.11+ and Git. Clone the repository, enter its directory, and use a virtual environment so the project does not modify a system-managed Python installation:
+The demo uses only fictional employers, roles, and receipts. It does not contact job sites, submit applications, or require credentials.
+
+### Before you start
+
+Install [Python 3.11 or newer](https://www.python.org/downloads/) and [Git](https://git-scm.com/downloads), then confirm both commands are available:
+
+```bash
+python3 --version
+git --version
+```
+
+### 1. Download the repository
 
 ```bash
 git clone https://github.com/mccruz/human-in-the-loop-ai-role-monitor.git
 cd human-in-the-loop-ai-role-monitor
+```
+
+Run the remaining commands from this directory. Your terminal prompt should show `human-in-the-loop-ai-role-monitor` rather than only `~`.
+
+### 2. Create an isolated Python environment
+
+```bash
 python3 -m venv .venv
 source .venv/bin/activate
 python -m pip install --no-deps -e .
-python -m unittest discover -s tests -v
-python -m compileall -q src tests
 ```
 
-On Windows PowerShell, activate the environment with `.venv\Scripts\Activate.ps1` instead. Do not use `--break-system-packages` with a Homebrew- or operating-system-managed Python installation.
+On Windows PowerShell, create the environment with `py -3.11 -m venv .venv` and activate it with `.venv\Scripts\Activate.ps1`. Do not use `--break-system-packages` with a Homebrew- or operating-system-managed Python installation.
 
-Run the complete offline demonstration:
+### 3. Run the demonstration
 
 ```bash
 role-monitor demo --output-dir demo-output --reset
 ```
 
-It creates a disposable workspace populated only with fictional employers, roles, listings, and receipts. The demo performs one clearly labelled synthetic approval, then proves that manifest and receipt verification work without contacting the network. Inspect `demo-output/reports/`, `demo-output/handoff_manifest.json`, and `demo-output/handoff_receipt.json`.
+Success means the command finishes without an error and reports the path to the generated demonstration artifacts. The demo performs one clearly labelled fictional approval, then proves that manifest and receipt verification work without contacting the network.
+
+The easiest files to review are:
+
+- `demo-output/reports/` — redacted JSON and CSV summaries;
+- `demo-output/handoff_manifest.json` — the exact approved handoff;
+- `demo-output/handoff_receipt.json` — proof that the exact manifest was acknowledged.
 
 Preview the optional Telegram digest without credentials or a network request:
 
 ```bash
 role-monitor demo --output-dir demo-output --reset --telegram-dry-run
 ```
+
+### Common setup problems
+
+| Message | What it means | What to do |
+| --- | --- | --- |
+| `externally-managed-environment` | Package installation was attempted outside the isolated environment. | Run `source .venv/bin/activate`, confirm the prompt starts with `(.venv)`, and retry the `python -m pip` command. |
+| `Start directory is not importable: 'tests'` or `Can't list 'src'` | The terminal is not in the cloned repository. | Run `cd human-in-the-loop-ai-role-monitor`, then retry. |
+| `role-monitor: command not found` | The environment is inactive or the package installation did not finish. | Activate `.venv`, rerun `python -m pip install --no-deps -e .`, and retry. |
+| Python reports a version below 3.11 | The selected Python is too old for this project. | Install Python 3.11 or newer and recreate `.venv`. |
 
 ### Try the manual review flow offline
 
