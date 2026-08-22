@@ -1,264 +1,130 @@
 # Human-in-the-Loop AI Role Monitor
 
-> A safe Python automation portfolio project that turns public ATS listings into a human-reviewed, auditable handoff queue for AI automation, implementation, and workflow-engineering roles.
+A Python workflow that finds roles from documented public job feeds, scores
+them with visible rules, preserves review decisions, and requires a person to
+approve every handoff.
 
-[![Python 3.11+](https://img.shields.io/badge/Python-3.11%2B-3776AB?logo=python&logoColor=white)](pyproject.toml) [![License: MIT](https://img.shields.io/badge/License-MIT-0B7F5C.svg)](LICENSE) [![Tests](https://img.shields.io/badge/tests-unittest-2D6A4F.svg)](tests)
+[![Python 3.11+](https://img.shields.io/badge/Python-3.11%2B-3776AB?logo=python&logoColor=white)](pyproject.toml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-0B7F5C.svg)](LICENSE)
 
-![A human-in-the-loop role-monitor pipeline: public ATS feeds flow through scoring and review to a verified handoff.](assets/social-preview.png)
+![Public job feeds moving through scoring, human review, and a verified handoff](assets/social-preview.png)
 
-Built to demonstrate the engineering judgment behind reliable AI-enabled automation: public-source discovery, clear decision boundaries, traceable state, and delivery verification. It is intentionally a **monitor and handoff system—not an application bot**.
+This is a monitoring and review system, not an application bot. It never
+submits an application or makes a hiring decision.
 
-**Start here:** [architecture](docs/architecture.md) · [provenance](docs/provenance.md) · [security boundaries](SECURITY.md) · [GitHub metadata](docs/github-metadata.md) · [recruiter discoverability checklist](docs/seo-checklist.md)
+## Review this project in 3 minutes
 
-## Review this project in 3 minutes (no setup required)
+No setup is required:
 
-You do **not** need Python, a Telegram account, or command-line experience to evaluate the project.
+1. Follow the diagram from public job feeds to human review and handoff.
+2. Read [How it works](#how-it-works) and
+   [Safety and limits](#safety-and-limits).
+3. Open the [architecture](docs/architecture.md),
+   [security policy](SECURITY.md), or
+   [automated checks](https://github.com/mccruz/human-in-the-loop-ai-role-monitor/actions/workflows/ci.yml)
+   for implementation evidence.
 
-1. Read the [60-second recruiter walkthrough](#60-second-recruiter-walkthrough) below.
-2. Use the diagram above to follow the path from public job listings to a person-controlled review and verified handoff.
-3. Review the [architecture decisions](docs/architecture.md) and [security boundaries](SECURITY.md).
-4. Inspect the [automated checks](https://github.com/mccruz/human-in-the-loop-ai-role-monitor/actions/workflows/ci.yml), which run the tests and the fictional offline demo on multiple Python versions.
+## How it works
 
-Running the code is optional. The hands-on instructions are provided for technical reviewers who want to see the workflow operate locally.
+1. Collect public openings from configured job-system feeds.
+2. Convert each listing into one consistent role record.
+3. Score the role with configurable terms and place it in a review queue.
+4. Preserve the role's identity and previous decisions in SQLite when it
+   appears again.
+5. Require a person to approve, reject, or defer the role.
+6. Prepare an approved handoff and mark it complete only after the receiver
+   confirms the exact handoff package.
+
+Automation handles repeatable collection and recordkeeping. A person keeps
+control of the consequential decision.
 
 ## What this demonstrates
 
-- Six documented public ATS adapters: Greenhouse, Lever (global and EU), Ashby, SmartRecruiters (pagination and detail hydration), Workable, and Recruitee.
-- Concurrent discovery with bounded retries and per-source failure isolation, so one unavailable career site does not discard other findings.
-- Explainable, configuration-driven scoring; stable identity and deduplication; and persisted SQLite decision state.
-- An explicit human decision: approve, reject, or defer before a role is eligible for handoff.
-- Deterministic handoff manifests with exact receipt verification, plus atomic, redacted JSON and CSV reports.
-- Optional summary-only Telegram scan digests with environment-only credentials, bounded retries, redacted failures, and an offline dry run.
+- Documented adapters for Greenhouse, Lever, Ashby, SmartRecruiters, Workable,
+  and Recruitee public job feeds.
+- Concurrent collection with limited retries and separate failure handling, so
+  one unavailable source does not discard other results.
+- Explainable scoring configured with visible terms and thresholds.
+- Stable role identity, duplicate prevention, and retained review history.
+- Human approval before handoff and exact confirmation after delivery.
+- Redacted JSON and CSV reports plus optional summary-only Telegram alerts.
 
-## 60-second recruiter walkthrough
+## Optional offline demo
 
-1. A scan normalizes public openings from multiple ATS providers into a common role record.
-2. A transparent policy scores each role against configured terms and thresholds; the resulting queue remains reviewable rather than auto-acted on.
-3. SQLite preserves identity, decisions, and audit history across rescans—changing a listing title does not silently reset a prior decision.
-4. After a person approves a role, the system produces a deterministic manifest. Delivery is recognized only when the receiver returns an exact receipt for that manifest.
-
-The result is a concrete example of human-in-the-loop automation for implementation-oriented work: automation handles repeatable collection and evidence; people retain the consequential decision.
-
-## Optional: run the offline demo
-
-The demo uses only fictional employers, roles, and receipts. It does not contact job sites, submit applications, or require credentials.
-
-### Before you start
-
-Install [Python 3.11 or newer](https://www.python.org/downloads/) and [Git](https://git-scm.com/downloads), then confirm both commands are available:
-
-```bash
-python3 --version
-git --version
-```
-
-### 1. Download the repository
+The demo uses fictional employers, roles, decisions, and receipts. It does not
+contact job sites, submit applications, or require credentials.
 
 ```bash
 git clone https://github.com/mccruz/human-in-the-loop-ai-role-monitor.git
 cd human-in-the-loop-ai-role-monitor
-```
-
-Run the remaining commands from this directory. Your terminal prompt should show `human-in-the-loop-ai-role-monitor` rather than only `~`.
-
-### 2. Create an isolated Python environment
-
-```bash
 python3 -m venv .venv
 source .venv/bin/activate
 python -m pip install --no-deps -e .
-```
-
-On Windows PowerShell, create the environment with `py -3.11 -m venv .venv` and activate it with `.venv\Scripts\Activate.ps1`. Do not use `--break-system-packages` with a Homebrew- or operating-system-managed Python installation.
-
-### 3. Run the demonstration
-
-```bash
 role-monitor demo --output-dir demo-output --reset
 ```
 
-Success means the command finishes without an error and reports the path to the generated demonstration artifacts. The demo performs one clearly labelled fictional approval, then proves that manifest and receipt verification work without contacting the network.
+Review these generated files:
 
-The easiest files to review are:
+- `demo-output/reports/` — redacted run summaries;
+- `demo-output/handoff_manifest.json` — the approved fictional handoff; and
+- `demo-output/handoff_receipt.json` — confirmation of that exact handoff.
 
-- `demo-output/reports/` — redacted JSON and CSV summaries;
-- `demo-output/handoff_manifest.json` — the exact approved handoff;
-- `demo-output/handoff_receipt.json` — proof that the exact manifest was acknowledged.
-
-Preview the optional Telegram digest without credentials or a network request:
+Preview the optional Telegram summary without credentials or a network request:
 
 ```bash
 role-monitor demo --output-dir demo-output --reset --telegram-dry-run
 ```
 
-### Common setup problems
+Live source configuration is deliberately opt-in. It requires a local file that
+is excluded from Git and an explicit `--allow-network` flag. See
+`role-monitor --help`, the [architecture guide](docs/architecture.md), and the
+[Telegram guide](docs/telegram.md) before using live feeds or notifications.
 
-| Message | What it means | What to do |
-| --- | --- | --- |
-| `externally-managed-environment` | Package installation was attempted outside the isolated environment. | Run `source .venv/bin/activate`, confirm the prompt starts with `(.venv)`, and retry the `python -m pip` command. |
-| `Start directory is not importable: 'tests'` or `Can't list 'src'` | The terminal is not in the cloned repository. | Run `cd human-in-the-loop-ai-role-monitor`, then retry. |
-| `role-monitor: command not found` | The environment is inactive or the package installation did not finish. | Activate `.venv`, rerun `python -m pip install --no-deps -e .`, and retry. |
-| Python reports a version below 3.11 | The selected Python is too old for this project. | Install Python 3.11 or newer and recreate `.venv`. |
+## Evidence produced by the workflow
 
-### Try the manual review flow offline
+| Stage | Reviewable evidence |
+| --- | --- |
+| Collection | Normalized roles and separate source failures |
+| Scoring | Visible score, reasons, and review threshold |
+| State | Saved roles, decisions, and audit history |
+| Handoff | Exact approved package and matching receipt |
+| Reporting | Redacted JSON and CSV summaries |
 
-The demo leaves additional fictional roles pending in its disposable database. This lets you exercise queue, review, and handoff behavior without creating a live configuration or making a network request:
+## Safety and limits
 
-```bash
-role-monitor queue \
-  --config config.example.json \
-  --database demo-output/demo_roles.sqlite3
-```
+- The workflow never submits applications or approves a role automatically.
+- Human decisions are stored separately from source data and retained across
+  rescans.
+- Authentication-shaped configuration fields are rejected, and external errors
+  are limited and redacted.
+- Only an exact receipt for the current handoff can complete delivery.
+- A delivery interrupted after sending requires a person to reconcile the
+  downstream system before retrying.
+- Telegram is optional, summary-only, and disabled by default.
 
-Copy one exact `role_key` value from the `pending` list, assign it below in place of `paste-the-role-key-here`, and then approve only that fictional role:
+Public listings can be incomplete, inaccurate, or removed without notice. The
+generic career-page fallback cannot reliably parse every dynamic website, and
+configured sources remain subject to provider terms and rate limits. Scoring is
+a review aid, not a prediction of job fit or hiring outcome.
 
-```bash
-ROLE_KEY='paste-the-role-key-here'
+## Verification
 
-role-monitor review \
-  --config config.example.json \
-  --database demo-output/demo_roles.sqlite3 \
-  "$ROLE_KEY" approved \
-  --note "Reviewed manually"
-
-role-monitor prepare-handoff \
-  --config config.example.json \
-  --database demo-output/demo_roles.sqlite3 \
-  --destination demo-output/manual-handoff.json
-```
-
-`prepare-handoff` includes only fresh roles that a person explicitly approved. It fails safely when no approved, undelivered role is available.
-
-### Configure live discovery
-
-Live discovery needs a local configuration that is deliberately excluded from Git. Create it first:
-
-```bash
-cp config.example.json config.local.json
-```
-
-Open `config.local.json` in your editor before scanning. Every employer name and URL in the example is fictional, so replace or remove those entries and keep at least one documented public careers-page URL. Do not add credentials or private data to this file.
-
-Then run the scan and inspect the queue before making any decision:
-
-```bash
-role-monitor scan --config config.local.json --allow-network
-role-monitor queue --config config.local.json
-```
-
-The scan output distinguishes successful sources from per-source failures. The queue can legitimately be empty when no discovered role meets the configured review threshold. When it contains a role you have actually reviewed, copy its exact `role_key` and use it explicitly:
-
-```bash
-ROLE_KEY='paste-the-role-key-here'
-role-monitor review --config config.local.json "$ROLE_KEY" approved --note "Reviewed manually"
-role-monitor prepare-handoff --config config.local.json --destination output/handoff.json
-```
-
-The live `scan` command never makes a review decision. Use `role-monitor --help` and each subcommand's `--help` for the complete interface.
-
-Live discovery is deliberately opt-in and requires an explicit `--allow-network` flag. Use only public sources, honor provider terms and rate limits, and review discovered roles before any handoff.
-
-## Optional Telegram scan digest
-
-Telegram notification is also explicit and observational. A live scan sends one summary-only, plain-text digest only when `--notify-telegram` is present; it never includes reviewer notes, job descriptions, local paths, credentials, or notification destinations, and it cannot approve or hand off a role.
-
-```bash
-role-monitor scan \
-  --config config.local.json \
-  --allow-network \
-  --notify-telegram
-```
-
-The implementation reads `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID` from the process environment. The repository contains empty placeholders only. See [Telegram setup and failure behavior](docs/telegram.md) before enabling a live send.
-
-If a process stops after delivery begins, first reconcile the downstream task system. Preserve and acknowledge its exact receipt when possible. Only when a stable-role-key upsert is confirmed safe should an operator release the stranded claim for retry:
-
-```bash
-role-monitor recover-handoff \
-  --config config.local.json \
-  --manifest output/handoff.json \
-  --confirm-downstream-reconciled
-```
-
-## Evidence an operator can inspect
-
-| Stage | Artifact or evidence | Why it matters |
-| --- | --- | --- |
-| Discovery | Normalized role records and structured per-source failures | Shows partial success instead of hiding a broken feed. |
-| Evaluation | Configurable score and review queue | Makes ranking criteria inspectable and reversible. |
-| State | SQLite roles, decisions, and audit events | Preserves review decisions while listings change on later scans. |
-| Delivery | Deterministic handoff manifest and exact receipt | Prevents partial, stale, or mismatched acknowledgements from being treated as delivered. |
-| Reporting | Atomic, redacted JSON and CSV reports | Produces shareable run evidence while keeping reviewer notes in the private SQLite state. |
-
-## Architecture
-
-```mermaid
-flowchart LR
-    A[Public ATS feeds] --> B[Concurrent discovery]
-    B --> C[Normalized roles]
-    C --> D[Configurable scoring]
-    D --> E[SQLite identity and state]
-    E --> F{Human review}
-    F -->|approve| G[Deterministic manifest]
-    F -->|reject or defer| E
-    G --> H[Exact receipt verification]
-    H -->|verified| E
-```
-
-See the [full architecture](docs/architecture.md) for module responsibilities and reliability decisions.
-
-## Supported public ATS sources
-
-| Provider | Support | Documentation |
-| --- | --- | --- |
-| Greenhouse | Native public job-board adapter | [Job Board API](https://developers.greenhouse.io/job-board.html) |
-| Lever | Native public postings adapter | [Postings API](https://github.com/lever/postings-api) |
-| Ashby | Native public job-postings adapter | [Public Job Posting API](https://developers.ashbyhq.com/docs/public-job-posting-api) |
-| SmartRecruiters | Native public postings adapter with pagination | [Public Posting API](https://developers.smartrecruiters.com/docs/endpoints) |
-| Workable | Native public published-jobs adapter | [Published jobs endpoint](https://help.workable.com/hc/en-us/articles/115012771647-Using-the-Workable-API-to-create-a-careers-page) |
-| Recruitee | Native public careers-site adapter | [Careers Site API](https://docs.recruitee.com/reference/intro-to-careers-site-api) |
-| Other career pages | Generic HTML / JSON-LD fallback | **Incomplete by design**; dynamic sites can hide listings. |
-
-The project uses documented public endpoints and synthetic fixtures. Provider schemas, availability, and terms can change; see [provenance](docs/provenance.md).
-
-## Safety boundaries
-
-- The project never submits applications, sends credentials to job sources, or automates a consequential decision.
-- Human approval is required before a role can be handed off; rejected and deferred decisions are retained separately.
-- Configuration rejects authentication-shaped fields, and persisted external errors are bounded and redacted.
-- Only an exact receipt for the current manifest can complete delivery; invalid or partial receipts leave state unchanged.
-- Concurrent delivery is blocked by a durable claim; crash recovery requires explicit downstream reconciliation rather than an automatic timeout takeover.
-- A first complete-feed miss pauses review and handoff eligibility; retirement requires two consecutive complete misses, and roles not seen for seven days must be refreshed before review or handoff.
-- Telegram is optional, summary-only, and disabled by default. Credentials come only from the process environment; tests use injected senders and no real keys.
-
-Read the complete [security policy and operating boundaries](SECURITY.md).
-
-## Limitations
-
-- Generic career-page parsing is a best-effort fallback, not a full browser automation solution.
-- The system cannot guarantee that a third-party listing is accurate, current, or still accepting candidates.
-- The standard-library HTTP transport validates resolved and redirected targets before each request, but it does not pin the validated IP through the TLS connection; configured hosts are assumed not to use DNS rebinding.
-- Scoring is an aid to review, not a fit prediction or hiring decision.
-- Operators remain responsible for source terms, request rates, and their own follow-up decisions.
-
-## Tests and quality checks
-
-The test suite covers provider-domain validation, malformed responses, retry behavior, concurrent failure isolation, scoring policy, stable identity, preserved review decisions, report redaction/atomicity, exact handoff receipts, Telegram rate limits, environment loading, credential redaction, and no-network dry runs.
+The test suite covers source validation, malformed responses, retries, scoring,
+stable identity, retained decisions, report redaction, delivery confirmation,
+Telegram limits, and offline operation.
 
 ```bash
 python -m unittest discover -s tests -v
 python -m compileall -q src tests
 ```
 
-## Roadmap
+## Project guide
 
-- [x] Ship an offline `role-monitor demo` workflow with synthetic reports, manifest, and receipt.
-- [x] Add optional Telegram notifications with environment-only credentials, summary-only templates, and mocked tests.
-- [ ] Expand documented public-feed coverage while preserving the same review and verification boundary.
-
-## Contributing
-
-Contributions should improve documented public-feed compatibility, reliability, accessibility, or evidence quality. See [CONTRIBUTING.md](CONTRIBUTING.md); all fixtures must remain fictional.
+- [Architecture](docs/architecture.md)
+- [Security policy](SECURITY.md)
+- [Telegram setup and behavior](docs/telegram.md)
+- [Public-source and authorship boundary](docs/provenance.md)
+- [Contributing](CONTRIBUTING.md)
 
 ## License
 
