@@ -1,8 +1,30 @@
 # Human-in-the-Loop AI Role Monitor
 
-A Python workflow that finds roles from documented public job feeds, scores
-them with visible rules, preserves review decisions, and requires a person to
-approve every handoff.
+A Python system that turns public job feeds into an explained review queue,
+retains a person's decisions, and verifies each approved handoff. Matching uses
+configurable rules, **not an LLM**; “AI roles” describes the job-search focus.
+
+## Example result
+
+**Synthetic demo example:** “AI Automation Engineer” at fictional Northstar
+Automation receives a score of **45** and enters the review queue as
+**pending**. A score does not authorize a handoff.
+
+| Step | What the person or system does |
+| --- | --- |
+| Review | A person approves, rejects, or defers a role |
+| Handoff | Only an approved role enters the handoff package |
+| Confirmation | Delivery completes only after a matching receipt |
+
+The demo exercises simulated review decisions and a fictional receiver. It
+submits no applications and measures no hiring outcome.
+
+## My contribution
+
+I implemented public-feed adapters, explainable scoring, SQLite review state,
+and receipt-verified handoff. This Python project emphasizes persistent state
+and delivery correctness; the separate n8n Job Monitor emphasizes workflow
+orchestration and integration design.
 
 [![Python 3.11+](https://img.shields.io/badge/Python-3.11%2B-3776AB?logo=python&logoColor=white)](pyproject.toml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-0B7F5C.svg)](LICENSE)
@@ -12,17 +34,12 @@ approve every handoff.
 This is a monitoring and review system, not an application bot. It never
 submits an application or makes a hiring decision.
 
-## Review this project in 3 minutes
+<a id="review-this-project-in-3-minutes"></a>
 
-No setup is required:
+## Explore the project
 
-1. Follow the diagram from public job feeds to human review and handoff.
-2. Read [How it works](#how-it-works) and
-   [Safety and limits](#safety-and-limits).
-3. Open the [architecture](docs/architecture.md),
-   [security policy](SECURITY.md), or
-   [automated checks](https://github.com/mccruz/human-in-the-loop-ai-role-monitor/actions/workflows/ci.yml)
-   for implementation evidence.
+Start with the example above, then follow the diagram and the
+[engineering evidence](#engineering-evidence). Setup is optional for review.
 
 ## How it works
 
@@ -38,16 +55,13 @@ No setup is required:
 Automation handles repeatable collection and recordkeeping. A person keeps
 control of the consequential decision.
 
-## What this demonstrates
+## Engineering evidence
 
-- Documented adapters for Greenhouse, Lever, Ashby, SmartRecruiters, Workable,
-  and Recruitee public job feeds.
-- Concurrent collection with limited retries and separate failure handling, so
-  one unavailable source does not discard other results.
-- Explainable scoring configured with visible terms and thresholds.
-- Stable role identity, duplicate prevention, and retained review history.
-- Human approval before handoff and exact confirmation after delivery.
-- Redacted JSON and CSV reports plus optional summary-only Telegram alerts.
+| Capability | Implementation | Check |
+| --- | --- | --- |
+| Collect feeds with isolated failures | [Discovery](src/role_monitor/discovery.py) | [HTTP/discovery tests](tests/test_http_discovery.py) |
+| Explain a score | [Scoring policy](src/role_monitor/policy.py) | [Policy tests](tests/test_policy.py) |
+| Preserve review and verify delivery | [Store](src/role_monitor/store.py), [handoff](src/role_monitor/handoff.py) | [Review-state tests](tests/test_store_review.py), [handoff tests](tests/test_handoff.py) |
 
 ## Optional offline demo
 
